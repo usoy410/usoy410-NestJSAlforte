@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { OkPacket, RowDataPacket } from "mysql2";
 import { DatabaseService } from "../database/database.service";
 
@@ -53,30 +53,31 @@ export class PositionsService {
         return rows;
     }
 
-    async updatePosition(
-        position_id: number,
-        partial: { position_code?: string; position_name?: string }
-    ) {
+    async updatePosition(position_id: number, partial: { position_code?: string; position_name?: string }) {
+        const existing = await this.findPositionById(position_id);
+        if (!existing) {
+            throw new NotFoundException("Position not found");
+        }
+
         const fields: string[] = [];
         const values: any[] = [];
 
         if (partial.position_code) {
-            fields.push("title = ?");
+            fields.push("position_code = ?");
             values.push(partial.position_code);
         }
 
         if (partial.position_name) {
-            fields.push("descriptionx = ?");
+            fields.push("position_name = ?");
             values.push(partial.position_name);
         }
 
-
         if (fields.length === 0) {
-            return await this.findPositionById(position_id);
+            return existing;
         }
 
         values.push(position_id);
-        const sql = `Update eventx SET ${fields.join(", ")} WHERE id = ?`;
+        const sql = `UPDATE positions SET ${fields.join(", ")} WHERE position_id = ?`;
         await this.pool().execute(sql, values);
         return this.findPositionById(position_id);
     }
